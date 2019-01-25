@@ -20,7 +20,7 @@ compileKotlin {
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
-mainClassName = 'com.example.MainKt'
+mainClassName = 'io.ktor.server.netty.EngineMain'
 
 kotlin {
     experimental {
