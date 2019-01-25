@@ -7,13 +7,14 @@ import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 
-fun main(args: Array<String>) {
-    embeddedServer(Netty, 8080) {
-        routing {
-            get("/") {
-                call.respondText("Hello world", ContentType.Text.Html)
-            }
+fun Application.module() {
+    routing {
+        get("/") {
+            call.respondText("Hello world", ContentType.Text.Html)
         }
-    }.start(wait = true)
+    }
 }
 
+fun main(args: Array<String>) {
+    embeddedServer(Netty, 8080, module = Application::module).start(wait = true)
+}
