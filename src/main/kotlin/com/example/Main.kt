@@ -29,5 +29,9 @@ fun Application.main() {
         static("static") {
             resources("html")
         }
+
+        static("css") {
+            resources("css")
+        }
     }
 }
