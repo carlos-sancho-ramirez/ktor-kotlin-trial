@@ -11,51 +11,47 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.URL
 
 const val newUserPath = "/newUserX"
 
 val users = mutableListOf<String>()
 
-fun replaceTexts(inStream: InputStream, outStream: OutputStream, map: Map<String, String>) {
+fun String.replaceTexts(map: Map<String, String>): String {
+    var start = 0
+    val sb = StringBuilder()
     do {
-        var byte = inStream.read()
-        if (byte >= 0) {
-            if (byte == '$'.toInt()) {
-                byte = inStream.read()
-                if (byte >= 0) {
-                    if (byte == '{'.toInt()) {
-                        byte = inStream.read()
-                        var key = ""
-                        while (byte >= 0 && byte != '}'.toInt()) {
-                            key += byte.toChar()
-                            byte = inStream.read()
-                        }
+        val end = indexOf("\${", start)
+        if (end >= 0) {
+            sb.append(substring(start, end))
+            val tokenEnd = indexOf("}", end + 2)
+            if (tokenEnd < end + 2) {
+                throw IllegalArgumentException("Unclosed token")
+            }
 
-                        val text = if (byte == '}'.toInt()) map.get(key) ?: "\${$key}" else "\${$key"
-                        for (ch: Char in text) {
-                            outStream.write(ch.toInt())
-                        }
-                    }
-                    else {
-                        outStream.write('$'.toInt())
-                        outStream.write(byte)
-                    }
-                }
-                else {
-                    outStream.write('$'.toInt())
-                }
+            val token = substring(end + 2, tokenEnd)
+            if (!map.containsKey(token)) {
+                throw IllegalArgumentException("No key provided to replace token $token")
             }
-            else {
-                outStream.write(byte)
-            }
+
+            sb.append(map[token])
+            start = tokenEnd + 1
         }
-    } while (byte >= 0)
+    } while (end >= 0)
+
+    sb.append(substring(start))
+    return sb.toString()
 }
 
 fun Application.main() {
     install(StatusPages) {
         status(HttpStatusCode.NotFound) {
             call.respond(TextContent("${it.value} ${it.description}", ContentType.Text.Plain.withCharset(Charsets.UTF_8), it))
+        }
+        exception<Throwable> { cause ->
+            call.respond(TextContent("500 Internal Server Error. ${cause::class.java.simpleName}. ${cause.message}",
+                    ContentType.Text.Plain.withCharset(Charsets.UTF_8),
+                    HttpStatusCode.InternalServerError))
         }
     }
 
@@ -75,11 +71,10 @@ fun Application.main() {
         }
 
         get("/newUserForm") {
-            call.respondOutputStream(ContentType.Text.Html, HttpStatusCode.OK) {
-                val inStream = this::class.java.getResourceAsStream("/html/newUser.html")
-                val map = mapOf("newUserPath" to newUserPath)
-                replaceTexts(inStream, this, map)
-            }
+            val res: URL? = this::class.java.getResource("/html/newUser.html")
+            val map = mapOf("newUserPath" to newUserPath)
+            val text: String = res!!.readText().replaceTexts(map)
+            call.respondText(text, ContentType.Text.Html)
         }
 
         static("css") {
