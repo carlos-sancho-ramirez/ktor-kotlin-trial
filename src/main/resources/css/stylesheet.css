@@ -1,4 +1,13 @@
-h2 {
-    color: blue;
+#topBar {
+    background-color: #993333
+}
+
+#topBar h2 {
+    color: white;
     text-align: center;
+}
+
+* {
+    margin: 0;
+    padding: 0;
 }

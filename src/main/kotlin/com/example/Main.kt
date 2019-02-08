@@ -9,13 +9,16 @@ import io.ktor.http.content.static
 import io.ktor.request.receiveParameters
 import io.ktor.response.*
 import io.ktor.routing.*
-import java.io.InputStream
-import java.io.OutputStream
+import org.omg.CORBA.DynAnyPackage.Invalid
 import java.net.URL
 
-const val newUserPath = "/newUserX"
+const val signInPath = "/signIn"
+const val signUpPath = "/signUp"
 
-val users = mutableListOf<String>()
+const val signInFormActionPath = "/signIn"
+const val signUpFormActionPath = "/signUp"
+
+val users = mutableMapOf<Int, User>()
 
 fun String.replaceTexts(map: Map<String, String>): String {
     var start = 0
@@ -57,22 +60,39 @@ fun Application.main() {
 
     routing {
         get("/") {
-            call.respondText("Hello world", ContentType.Text.Html)
+            val res: URL? = this::class.java.getResource("/html/index.html")
+            val map = mapOf("signInPath" to signInPath)
+            val text: String = res!!.readText().replaceTexts(map)
+            call.respondText(text, ContentType.Text.Html)
         }
 
-        post(newUserPath) {
+        get(signInPath) {
+            val res: URL? = this::class.java.getResource("/html/signIn.html")
+            val map = mapOf("signInFormActionPath" to signInPath, "signUpPath" to signUpPath)
+            val text: String = res!!.readText().replaceTexts(map)
+            call.respondText(text, ContentType.Text.Html)
+        }
+
+        post(signUpFormActionPath) {
             val post = call.receiveParameters()
             val userName = post["userName"]
-            if (userName != null) {
-                users.add(userName)
-            }
+            val password = post["password"]
+            val passwordConfirmation = post["passwordConfirmation"]
+            if (userName != null && password != null && password == passwordConfirmation) {
+                val maxId = users.keys.max() ?: 0
+                val newId = maxId + 1
+                users[newId] = User(userName, password)
 
-            call.respondText("List of created users: $users", ContentType.Text.Html)
+                call.respondText("List of created users: $users", ContentType.Text.Html)
+            }
+            else {
+                call.respond(TextContent("Bad request", ContentType.Text.Html, HttpStatusCode.BadRequest))
+            }
         }
 
-        get("/newUserForm") {
-            val res: URL? = this::class.java.getResource("/html/newUser.html")
-            val map = mapOf("newUserPath" to newUserPath)
+        get(signUpPath) {
+            val res: URL? = this::class.java.getResource("/html/signUp.html")
+            val map = mapOf("newUserPath" to signUpFormActionPath)
             val text: String = res!!.readText().replaceTexts(map)
             call.respondText(text, ContentType.Text.Html)
         }
