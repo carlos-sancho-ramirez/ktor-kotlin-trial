@@ -46,6 +46,14 @@ fun String.replaceTexts(map: Map<String, String>): String {
     return sb.toString()
 }
 
+fun Routing.getHtml(path: String, htmlFile: String, replacements: Map<String, String>): Route {
+    return get(path) {
+        val res: URL? = this::class.java.getResource("/html/$htmlFile.html")
+        val text: String = res!!.readText().replaceTexts(replacements)
+        call.respondText(text, ContentType.Text.Html)
+    }
+}
+
 fun Application.main() {
     install(StatusPages) {
         status(HttpStatusCode.NotFound) {
@@ -59,19 +67,9 @@ fun Application.main() {
     }
 
     routing {
-        get("/") {
-            val res: URL? = this::class.java.getResource("/html/index.html")
-            val map = mapOf("signInPath" to signInPath)
-            val text: String = res!!.readText().replaceTexts(map)
-            call.respondText(text, ContentType.Text.Html)
-        }
-
-        get(signInPath) {
-            val res: URL? = this::class.java.getResource("/html/signIn.html")
-            val map = mapOf("signInFormActionPath" to signInPath, "signUpPath" to signUpPath)
-            val text: String = res!!.readText().replaceTexts(map)
-            call.respondText(text, ContentType.Text.Html)
-        }
+        getHtml("/", "index", mapOf("signInPath" to signInPath))
+        getHtml(signInPath, "signIn", mapOf("signInFormActionPath" to signInPath, "signUpPath" to signUpPath))
+        getHtml(signUpPath, "signUp", mapOf("newUserPath" to signUpFormActionPath))
 
         post(signUpFormActionPath) {
             val post = call.receiveParameters()
@@ -88,13 +86,6 @@ fun Application.main() {
             else {
                 call.respond(TextContent("Bad request", ContentType.Text.Html, HttpStatusCode.BadRequest))
             }
-        }
-
-        get(signUpPath) {
-            val res: URL? = this::class.java.getResource("/html/signUp.html")
-            val map = mapOf("newUserPath" to signUpFormActionPath)
-            val text: String = res!!.readText().replaceTexts(map)
-            call.respondText(text, ContentType.Text.Html)
         }
 
         static("css") {
