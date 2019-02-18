@@ -12,6 +12,7 @@ import io.ktor.mustache.MustacheContent
 import io.ktor.request.receiveParameters
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.sessions.*
 import org.omg.CORBA.DynAnyPackage.Invalid
 import java.net.URL
 
@@ -21,11 +22,25 @@ const val signUpPath = "/signUp"
 const val signInFormActionPath = "/signIn"
 const val signUpFormActionPath = "/signUp"
 
+var sessionCounter = 0
 val users = mutableMapOf<Int, User>()
+val sessions = mutableMapOf<Int, Int>() // Maps session id with its user id
 
 fun Routing.getMustache(path: String, htmlFile: String, replacements: Map<String, String>): Route {
     return get(path) {
-        call.respond(MustacheContent("$htmlFile.html", replacements))
+        var session: Session? = call.sessions.get()
+        if (session == null) {
+            session = Session(++sessionCounter)
+            call.sessions.set(session)
+        }
+
+        var repl = replacements.toMutableMap()
+        val userId = sessions[session.id]
+        if (userId != null) {
+            repl["userAlias"] = users[userId]!!.name
+        }
+
+        call.respond(MustacheContent("$htmlFile.html", repl))
     }
 }
 
@@ -45,6 +60,10 @@ fun Application.main() {
         mustacheFactory = DefaultMustacheFactory("templates/html")
     }
 
+    install(Sessions) {
+        cookie<Session>("DEVICE_ID")
+    }
+
     routing {
         getMustache("/", "index", mapOf("signInPath" to signInPath))
         getMustache(signInPath, "signIn", mapOf("signInFormActionPath" to signInPath, "signUpPath" to signUpPath))
@@ -61,6 +80,21 @@ fun Application.main() {
                 users[newId] = User(userName, password)
 
                 call.respondText("List of created users: $users", ContentType.Text.Html)
+            }
+            else {
+                call.respond(TextContent("Bad request", ContentType.Text.Html, HttpStatusCode.BadRequest))
+            }
+        }
+
+        post(signInFormActionPath) {
+            val post = call.receiveParameters()
+            val userName = post["userName"]
+            val password = post["password"]
+            val userIds = if (userName != null && password != null) users.filterValues { user -> user.name == userName && user.password == password }.keys else setOf()
+            val session = call.sessions.get<Session>()
+            if (userIds.size == 1 && session != null) {
+                sessions[session.id] = userIds.first()
+                call.respondText("Signed in as: $userName", ContentType.Text.Html)
             }
             else {
                 call.respond(TextContent("Bad request", ContentType.Text.Html, HttpStatusCode.BadRequest))
