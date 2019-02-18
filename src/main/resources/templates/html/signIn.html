@@ -4,13 +4,13 @@
  </head>
  <body>
   <p>Fill the following form to sign in</p>
-  <form action="${signInFormActionPath}" method="post">
+  <form action="{{signInFormActionPath}}" method="post">
    User name:<br/>
    <input name="userName" type="text"/><br/>
    <input name="password" type="password"/><br/>
    <input type="submit" value="Sign In"/>
   </form>
 
-  <p>Still not registered? Sign up <a href="${signUpPath}">here</a></p>
+  <p>Still not registered? Sign up <a href="{{signUpPath}}">here</a></p>
  </body>
 </html>

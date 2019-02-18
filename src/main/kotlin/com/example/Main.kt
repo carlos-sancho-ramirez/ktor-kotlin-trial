@@ -1,11 +1,14 @@
 package com.example
 
+import com.github.mustachejava.DefaultMustacheFactory
 import io.ktor.application.*
 import io.ktor.features.StatusPages
 import io.ktor.http.*
 import io.ktor.http.content.TextContent
 import io.ktor.http.content.resources
 import io.ktor.http.content.static
+import io.ktor.mustache.Mustache
+import io.ktor.mustache.MustacheContent
 import io.ktor.request.receiveParameters
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -20,37 +23,9 @@ const val signUpFormActionPath = "/signUp"
 
 val users = mutableMapOf<Int, User>()
 
-fun String.replaceTexts(map: Map<String, String>): String {
-    var start = 0
-    val sb = StringBuilder()
-    do {
-        val end = indexOf("\${", start)
-        if (end >= 0) {
-            sb.append(substring(start, end))
-            val tokenEnd = indexOf("}", end + 2)
-            if (tokenEnd < end + 2) {
-                throw IllegalArgumentException("Unclosed token")
-            }
-
-            val token = substring(end + 2, tokenEnd)
-            if (!map.containsKey(token)) {
-                throw IllegalArgumentException("No key provided to replace token $token")
-            }
-
-            sb.append(map[token])
-            start = tokenEnd + 1
-        }
-    } while (end >= 0)
-
-    sb.append(substring(start))
-    return sb.toString()
-}
-
-fun Routing.getHtml(path: String, htmlFile: String, replacements: Map<String, String>): Route {
+fun Routing.getMustache(path: String, htmlFile: String, replacements: Map<String, String>): Route {
     return get(path) {
-        val res: URL? = this::class.java.getResource("/html/$htmlFile.html")
-        val text: String = res!!.readText().replaceTexts(replacements)
-        call.respondText(text, ContentType.Text.Html)
+        call.respond(MustacheContent("$htmlFile.html", replacements))
     }
 }
 
@@ -66,10 +41,14 @@ fun Application.main() {
         }
     }
 
+    install(Mustache) {
+        mustacheFactory = DefaultMustacheFactory("templates/html")
+    }
+
     routing {
-        getHtml("/", "index", mapOf("signInPath" to signInPath))
-        getHtml(signInPath, "signIn", mapOf("signInFormActionPath" to signInPath, "signUpPath" to signUpPath))
-        getHtml(signUpPath, "signUp", mapOf("newUserPath" to signUpFormActionPath))
+        getMustache("/", "index", mapOf("signInPath" to signInPath))
+        getMustache(signInPath, "signIn", mapOf("signInFormActionPath" to signInPath, "signUpPath" to signUpPath))
+        getMustache(signUpPath, "signUp", mapOf("newUserPath" to signUpFormActionPath))
 
         post(signUpFormActionPath) {
             val post = call.receiveParameters()
